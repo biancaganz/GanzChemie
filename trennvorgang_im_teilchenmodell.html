@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trennvorgänge im Teilchenmodell - Chemie 9. Klasse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      touch-action: manipulation;
+    }
+
+    /* Filmstrip styling */
+    .filmstrip-frame {
+      position: relative;
+      border: 12px solid #1e293b;
+      border-radius: 8px;
+      background-color: #ffffff;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .filmstrip-sprockets-left,
+    .filmstrip-sprockets-right {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      align-items: center;
+      background-color: #1e293b;
+      z-index: 20;
+    }
+
+    .filmstrip-sprockets-left { left: -14px; }
+    .filmstrip-sprockets-right { right: -14px; }
+
+    .sprocket {
+      width: 8px;
+      height: 12px;
+      background-color: #ffffff;
+      border-radius: 2px;
+    }
+
+    .particle {
+      cursor: grab;
+      user-select: none;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      touch-action: none;
+    }
+
+    .particle:active {
+      cursor: grabbing;
+      transform: scale(1.15);
+      z-index: 50;
+    }
+
+    .drop-zone {
+      position: relative;
+      min-height: 280px;
+    }
+
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background: white !important;
+        color: black !important;
+      }
+      .filmstrip-frame {
+        border-color: #000 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+      }
+      .filmstrip-sprockets-left, .filmstrip-sprockets-right {
+        background-color: #000 !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-12">
+
+  <!-- Header -->
+  <header class="bg-slate-900 text-white shadow-md no-print sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-indigo-600 rounded-lg">
+          <i class="fa-solid fa-flask-vial text-2xl text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold leading-tight">Trennvorgänge im Teilchenmodell</h1>
+          <p class="text-xs text-slate-400">Chemie 9. Klasse • Realschule Bayern (Zweig II)</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2">
+        <button id="btn-reset" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium rounded-lg flex items-center gap-2 transition">
+          <i class="fa-solid fa-rotate-right"></i> Zurücksetzen
+        </button>
+        <button id="btn-print" onclick="window.print()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg flex items-center gap-2 shadow-sm transition">
+          <i class="fa-solid fa-print"></i> Drucken / PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="max-w-7xl mx-auto px-4 mt-2 overflow-x-auto">
+      <nav class="flex space-x-2 border-b border-slate-700" id="tabs-container">
+        <!-- Dynamic Tabs inserted via JS -->
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-6xl mx-auto px-4 mt-6">
+
+    <!-- Active Procedure Info & Particle Spawner (Legend) -->
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6 no-print">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 pb-4 border-b border-slate-100">
+        <div>
+          <h2 id="current-title" class="text-2xl font-bold text-slate-900">Filtrieren</h2>
+          <p id="current-desc" class="text-sm text-slate-600">Stelle den Trennvorgang im Teilchenmodell in den drei Phasen dar.</p>
+        </div>
+        <div class="text-xs bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2 rounded-lg flex items-center gap-2">
+          <i class="fa-solid fa-lightbulb text-amber-500 text-base"></i>
+          <span>Ziehe die Teilchen aus der Legende unten in die Versuchsfelder. Doppelklick zum Löschen.</span>
+        </div>
+      </div>
+
+      <!-- Particle Palette / Legend -->
+      <div>
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Verfügbare Teilchen (Spender):</h3>
+        <div id="particle-palette" class="flex flex-wrap gap-4 items-center">
+          <!-- Particles inserted dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Printable Header (Only visible in Print) -->
+    <div class="hidden print:block mb-6">
+      <h1 class="text-2xl font-bold text-black" id="print-title">Trennvorgang: Filtrieren</h1>
+      <p class="text-sm text-gray-600">Name: ________________________ Klasse: _______ Datum: _________</p>
+    </div>
+
+    <!-- 3-Phase Filmstrip Canvas -->
+    <div class="filmstrip-frame p-4 md:p-6 bg-white">
+      <!-- Sprockets SVG decoration -->
+      <div class="filmstrip-sprockets-left">
+        <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+        <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+        <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+      </div>
+      <div class="filmstrip-sprockets-right">
+        <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+        <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+        <div class="sprocket"></div><div class="sprocket"></div><div class="sprocket"></div>
+      </div>
+
+      <!-- Three Frames Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Phase 1: Vorher -->
+        <div class="flex flex-col border-2 border-slate-800 rounded-lg overflow-hidden bg-slate-50 shadow-inner">
+          <div class="bg-slate-800 text-white text-center py-2 font-bold text-sm tracking-wide">
+            1. Vor dem Trennen (Gemisch)
+          </div>
+          <div id="zone-1" class="drop-zone flex-1 relative flex justify-center items-center p-2 bg-white" data-phase="1">
+            <div id="svg-phase-1" class="absolute inset-0 w-full h-full pointer-events-none"></div>
+            <!-- Canvas container for particles -->
+            <div id="particles-phase-1" class="absolute inset-0 w-full h-full"></div>
+          </div>
+        </div>
+
+        <!-- Phase 2: Währenddessen -->
+        <div class="flex flex-col border-2 border-slate-800 rounded-lg overflow-hidden bg-slate-50 shadow-inner">
+          <div class="bg-slate-800 text-white text-center py-2 font-bold text-sm tracking-wide">
+            2. Während des Trennens
+          </div>
+          <div id="zone-2" class="drop-zone flex-1 relative flex justify-center items-center p-2 bg-white" data-phase="2">
+            <div id="svg-phase-2" class="absolute inset-0 w-full h-full pointer-events-none"></div>
+            <div id="particles-phase-2" class="absolute inset-0 w-full h-full"></div>
+          </div>
+        </div>
+
+        <!-- Phase 3: Nachher -->
+        <div class="flex flex-col border-2 border-slate-800 rounded-lg overflow-hidden bg-slate-50 shadow-inner">
+          <div class="bg-slate-800 text-white text-center py-2 font-bold text-sm tracking-wide">
+            3. Nach dem Trennen (Getrennt)
+          </div>
+          <div id="zone-3" class="drop-zone flex-1 relative flex justify-center items-center p-2 bg-white" data-phase="3">
+            <div id="svg-phase-3" class="absolute inset-0 w-full h-full pointer-events-none"></div>
+            <div id="particles-phase-3" class="absolute inset-0 w-full h-full"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // Config & Data Model for Procedures (Strict separation of particle vs substance level - NO text inside particles)
+    const PROCEDURES = {
+      filtrieren: {
+        id: 'filtrieren',
+        title: 'Filtrieren',
+        desc: 'Trennen einer Suspension (z. B. Wasser und Asche) aufgrund unterschiedlicher Teilchengrößen.',
+        particles: [
+          { id: 'wasser', name: 'Wasserteilchen', color: '#3b82f6', shape: 'triangle' },
+          { id: 'asche', name: 'Ascheteilchen', color: '#475569', shape: 'pentagon' }
+        ]
+      },
+      eindampfen: {
+        id: 'eindampfen',
+        title: 'Eindampfen',
+        desc: 'Trennen einer Lösung (z. B. Salz in Wasser) durch Verdampfen des Lösungsmittels.',
+        particles: [
+          { id: 'wasser', name: 'Wasserteilchen', color: '#3b82f6', shape: 'triangle' },
+          { id: 'salz', name: 'Salzteilchen', color: '#f59e0b', shape: 'square' }
+        ]
+      },
+      destillieren: {
+        id: 'destillieren',
+        title: 'Destillieren',
+        desc: 'Trennen flüssiger Gemische oder Lösungen durch Verdampfen und anschließendes Kondensieren.',
+        particles: [
+          { id: 'wasser', name: 'Wasserteilchen', color: '#3b82f6', shape: 'triangle' },
+          { id: 'salz', name: 'Salzteilchen', color: '#f59e0b', shape: 'square' }
+        ]
+      },
+      magnetscheiden: {
+        id: 'magnetscheiden',
+        title: 'Magnetscheiden',
+        desc: 'Trennen eines festen Gemisches (z. B. Eisen und Sand) aufgrund von Magnetismus.',
+        particles: [
+          { id: 'eisen', name: 'Eisenteilchen', color: '#334155', shape: 'hexagon' },
+          { id: 'sand', name: 'Sandteilchen', color: '#b45309', shape: 'diamond' }
+        ]
+      },
+      dekantieren: {
+        id: 'dekantieren',
+        title: 'Dekantieren',
+        desc: 'Trennen einer Suspension durch Abgießen der überstehenden Flüssigkeit nach dem Sedimentieren.',
+        particles: [
+          { id: 'wasser', name: 'Wasserteilchen', color: '#3b82f6', shape: 'triangle' },
+          { id: 'sand', name: 'Sandteilchen', color: '#b45309', shape: 'diamond' }
+        ]
+      }
+    };
+
+    let activeProcedure = 'filtrieren';
+    let draggedElement = null;
+    let dragOffset = { x: 0, y: 0 };
+
+    // --- SVG Drawing Utilities ---
+    const SVGElements = {
+      // Standard upright beaker with spout on upper left
+      beaker: (x=60, y=120, w=90, h=120) => `
+        <g>
+          <!-- Glass Body -->
+          <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="none" stroke="#334155" stroke-width="4" />
+          <!-- Spout Lip (Upper Left) -->
+          <path d="M ${x-6} ${y+4} L ${x} ${y}" fill="none" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
+          <!-- Measurement ticks -->
+          <line x1="${x+w-12}" y1="${y+25}" x2="${x+w-4}" y2="${y+25}" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="${x+w-18}" y1="${y+45}" x2="${x+w-4}" y2="${y+45}" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="${x+w-12}" y1="${y+65}" x2="${x+w-4}" y2="${y+65}" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="${x+w-18}" y1="${y+85}" x2="${x+w-4}" y2="${y+85}" stroke="#94a3b8" stroke-width="2"/>
+        </g>
+      `,
+      // Tilted Beaker for Decanting (Phase 2): Tilted right, spout at top right pointing down into right beaker
+      tiltedBeakerDecant: (cx=100, cy=105, w=85, h=115, angle=42) => `
+        <g transform="rotate(${angle} ${cx} ${cy})">
+          <!-- Main Body -->
+          <rect x="${cx - w/2}" y="${cy - h/2}" width="${w}" height="${h}" rx="6" fill="none" stroke="#334155" stroke-width="4" />
+          <!-- Spout Lip on Upper Right Side so when rotated +42deg it points RIGHT-DOWNWARD -->
+          <path d="M ${cx + w/2 + 6} ${cy - h/2 + 4} L ${cx + w/2} ${cy - h/2}" fill="none" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
+          <!-- Ticks -->
+          <line x1="${cx - w/2 + 4}" y1="${cy - h/2 + 25}" x2="${cx - w/2 + 15}" y2="${cy - h/2 + 25}" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="${cx - w/2 + 4}" y1="${cy - h/2 + 50}" x2="${cx - w/2 + 20}" y2="${cy - h/2 + 50}" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="${cx - w/2 + 4}" y1="${cy - h/2 + 75}" x2="${cx - w/2 + 15}" y2="${cy - h/2 + 75}" stroke="#94a3b8" stroke-width="2"/>
+        </g>
+      `,
+      funnel: (x=50, y=70) => `
+        <!-- Filter Funnel -->
+        <polygon points="${x},${y} ${x+120},${y} ${x+70},${y+70} ${x+70},${y+110} ${x+50},${y+110} ${x+50},${y+70}" fill="#f1f5f9" stroke="#334155" stroke-width="4" stroke-linejoin="round"/>
+        <!-- Inner Filter Paper -->
+        <polygon points="${x+10},${y+5} ${x+110},${y+5} ${x+60},${y+65}" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+      `,
+      evaporatingDish: (x=50, y=90) => `
+        <!-- Tripod Stand -->
+        <path d="M ${x-10} ${y+70} L ${x+20} ${y+20} L ${x+100} ${y+20} L ${x+130} ${y+70}" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+        <!-- Evaporating Dish -->
+        <path d="M ${x} ${y+20} Q ${x+60} ${y+70} ${x+120} ${y+20} Z" fill="#f8fafc" stroke="#334155" stroke-width="4"/>
+      `,
+      heatArrows: (x=90, y=170) => `
+        <g class="animate-pulse">
+          <path d="M ${x} ${y+30} L ${x} ${y} M ${x} ${y} L ${x-8} ${y+10} M ${x} ${y} L ${x+8} ${y+10}" stroke="#ef4444" stroke-width="4" stroke-linecap="round"/>
+          <path d="M ${x+30} ${y+30} L ${x+30} ${y} M ${x+30} ${y} L ${x+22} ${y+10} M ${x+30} ${y} L ${x+38} ${y+10}" stroke="#ef4444" stroke-width="4" stroke-linecap="round"/>
+          <path d="M ${x+60} ${y+30} L ${x+60} ${y} M ${x+60} ${y} L ${x+52} ${y+10} M ${x+60} ${y} L ${x+68} ${y+10}" stroke="#ef4444" stroke-width="4" stroke-linecap="round"/>
+          <text x="${x+30}" y="${y+48}" text-anchor="middle" fill="#ef4444" font-weight="bold" font-size="14">Hitze</text>
+        </g>
+      `,
+      magnet: (x=110, y=70) => `
+        <g transform="rotate(30 ${x} ${y})">
+          <!-- Horseshoe Magnet -->
+          <path d="M ${x} ${y} L ${x} ${y+50} A 20 20 0 0 0 ${x+40} ${y+50} L ${x+40} ${y}" fill="none" stroke="#ef4444" stroke-width="16" stroke-linecap="square"/>
+          <path d="M ${x+24} ${y} L ${x+24} ${y+50} A 4 4 0 0 0 ${x+40} ${y+50} L ${x+40} ${y}" fill="none" stroke="#3b82f6" stroke-width="16" stroke-linecap="square"/>
+          <text x="${x-3}" y="${y+15}" fill="white" font-weight="bold" font-size="10">S</text>
+          <text x="${x+30}" y="${y+15}" fill="white" font-weight="bold" font-size="10">N</text>
+        </g>
+      `
+    };
+
+    // Render Apparatus SVG based on procedure and phase
+    function renderApparatus(procId, phase) {
+      const svgHeader = `<svg viewBox="0 0 280 260" class="w-full h-full">`;
+      const svgFooter = `</svg>`;
+      let content = '';
+
+      if (procId === 'filtrieren') {
+        if (phase === 1 || phase === 2) {
+          content += SVGElements.beaker(85, 115, 95, 125);
+          content += SVGElements.funnel(75, 50);
+        }
+        if (phase === 3) {
+          content += SVGElements.beaker(20, 115, 90, 125);
+          content += SVGElements.beaker(155, 115, 90, 125);
+          content += SVGElements.funnel(145, 50);
+        }
+      } 
+      else if (procId === 'eindampfen') {
+        if (phase === 1) {
+          content += SVGElements.evaporatingDish(80, 100);
+        } else if (phase === 2) {
+          content += SVGElements.evaporatingDish(80, 80);
+          content += SVGElements.heatArrows(90, 175);
+        } else if (phase === 3) {
+          content += SVGElements.evaporatingDish(80, 100);
+        }
+      }
+      else if (procId === 'destillieren') {
+        // Matched exactly with PDF Page 3 (Destillieren)
+        const flaskCondenserSVG = (showHeat = false) => `
+          <!-- Round Bottom Flask -->
+          <circle cx="65" cy="185" r="38" fill="none" stroke="#1e293b" stroke-width="3.5" />
+          <path d="M 57 150 L 57 105 L 73 105 L 73 150" fill="white" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
+          
+          <!-- Tube from Flask to Condenser -->
+          <path d="M 65 105 L 65 65 Q 65 50 80 50 L 105 50 L 210 115 Q 220 120 220 135 L 220 155" fill="none" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+          
+          <!-- Outer Liebig Condenser Jacket -->
+          <path d="M 110 40 L 195 93 L 187 106 L 102 53 Z" fill="#e2e8f0" fill-opacity="0.6" stroke="#1e293b" stroke-width="3"/>
+          
+          <!-- Condenser Label & Ports -->
+          <text x="145" y="42" font-size="12" fill="#1e293b" font-weight="bold" font-family="sans-serif">Kühler</text>
+          
+          <!-- Cooling Water In (Blue Arrow - Lower Right) -->
+          <path d="M 160 120 L 172 102" stroke="#2563eb" stroke-width="3.5" fill="none" />
+          <polygon points="172,102 163,106 169,113" fill="#2563eb"/>
+          
+          <!-- Cooling Water Out (Red Arrow - Upper Left) -->
+          <path d="M 125 62 L 113 44" stroke="#dc2626" stroke-width="3.5" fill="none" />
+          <polygon points="113,44 122,48 116,55" fill="#dc2626"/>
+          
+          <!-- Receiving Beaker on the right -->
+          ${SVGElements.beaker(195, 140, 65, 95)}
+          
+          <!-- Heat arrows if during distillation -->
+          ${showHeat ? `
+            <g class="animate-pulse">
+              <path d="M 45 245 L 45 230 M 45 230 L 40 236 M 45 230 L 50 236" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
+              <path d="M 65 245 L 65 230 M 65 230 L 60 236 M 65 230 L 70 236" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
+              <path d="M 85 245 L 85 230 M 85 230 L 80 236 M 85 230 L 90 236" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
+              <text x="65" y="257" text-anchor="middle" fill="#ef4444" font-weight="bold" font-size="11">Hitze</text>
+            </g>
+          ` : ''}
+        `;
+
+        if (phase === 1) {
+          content += flaskCondenserSVG(false);
+        } else if (phase === 2) {
+          content += flaskCondenserSVG(true);
+        } else if (phase === 3) {
+          content += flaskCondenserSVG(false);
+        }
+      }
+      else if (procId === 'magnetscheiden') {
+        if (phase === 1) {
+          content += SVGElements.beaker(85, 115, 100, 125);
+        } else if (phase === 2) {
+          content += SVGElements.beaker(85, 115, 100, 125);
+          content += SVGElements.magnet(110, 50);
+        } else if (phase === 3) {
+          content += SVGElements.beaker(20, 115, 95, 125);
+          content += SVGElements.beaker(150, 115, 95, 125);
+          content += SVGElements.magnet(45, 50);
+        }
+      }
+      else if (procId === 'dekantieren') {
+        // Matched exactly with PDF Page 5 (Dekantieren)
+        if (phase === 1) {
+          // Phase 1: Two upright beakers side by side
+          content += SVGElements.beaker(35, 115, 90, 125);
+          content += SVGElements.beaker(150, 115, 90, 125);
+        } else if (phase === 2) {
+          // Phase 2: Left beaker tilted rightwards (+42 deg), spout at top right points down directly into right beaker
+          content += SVGElements.tiltedBeakerDecant(105, 105, 85, 115, 42);
+          content += SVGElements.beaker(140, 125, 90, 120);
+        } else if (phase === 3) {
+          // Phase 3: Two upright beakers side by side
+          content += SVGElements.beaker(35, 115, 90, 125);
+          content += SVGElements.beaker(150, 115, 90, 125);
+        }
+      }
+
+      return svgHeader + content + svgFooter;
+    }
+
+    // --- UI Initialization & Tab Switching ---
+    function initUI() {
+      const navContainer = document.getElementById('tabs-container');
+      navContainer.innerHTML = '';
+
+      Object.keys(PROCEDURES).forEach(key => {
+        const proc = PROCEDURES[key];
+        const btn = document.createElement('button');
+        btn.className = `px-4 py-3 text-sm font-semibold rounded-t-lg transition whitespace-nowrap flex items-center gap-2 ${
+          key === activeProcedure
+            ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-sm'
+            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+        }`;
+        btn.innerHTML = `<i class="fa-solid fa-flask"></i> ${proc.title}`;
+        btn.onclick = () => switchProcedure(key);
+        navContainer.appendChild(btn);
+      });
+
+      renderActiveProcedure();
+    }
+
+    function switchProcedure(procKey) {
+      activeProcedure = procKey;
+      initUI();
+    }
+
+    function renderActiveProcedure() {
+      const proc = PROCEDURES[activeProcedure];
+      document.getElementById('current-title').innerText = proc.title;
+      document.getElementById('current-desc').innerText = proc.desc;
+      document.getElementById('print-title').innerText = `Trennvorgang im Teilchenmodell: ${proc.title}`;
+
+      // Render Particle Palette / Spawner
+      const palette = document.getElementById('particle-palette');
+      palette.innerHTML = '';
+
+      proc.particles.forEach(p => {
+        const wrapper = document.createElement('div');
+        wrapper.className = "flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl shadow-sm";
+        
+        const spawner = createParticleElement(p, true);
+        
+        const label = document.createElement('span');
+        label.className = "text-sm font-medium text-slate-700";
+        label.innerText = p.name;
+
+        wrapper.appendChild(spawner);
+        wrapper.appendChild(label);
+        palette.appendChild(wrapper);
+      });
+
+      // Render SVGs for the 3 Phases
+      for (let i = 1; i <= 3; i++) {
+        document.getElementById(`svg-phase-${i}`).innerHTML = renderApparatus(activeProcedure, i);
+        document.getElementById(`particles-phase-${i}`).innerHTML = ''; // Clear canvas
+      }
+    }
+
+    // --- Particle Creation & Dragging Logic ---
+    function createParticleElement(particleConfig, isSpawner = false) {
+      const elem = document.createElement('div');
+      elem.className = `particle flex items-center justify-center shadow-md drop-shadow`;
+      elem.style.width = '28px';
+      elem.style.height = '28px';
+      
+      // Apply CSS geometric shapes using clip-path / border-radius
+      if (particleConfig.shape === 'circle') {
+        elem.style.borderRadius = '9999px';
+        elem.style.backgroundColor = particleConfig.color;
+      } else if (particleConfig.shape === 'square') {
+        elem.style.borderRadius = '4px';
+        elem.style.backgroundColor = particleConfig.color;
+      } else if (particleConfig.shape === 'triangle') {
+        elem.style.clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
+        elem.style.backgroundColor = particleConfig.color;
+      } else if (particleConfig.shape === 'diamond') {
+        elem.style.clipPath = 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)';
+        elem.style.backgroundColor = particleConfig.color;
+      } else if (particleConfig.shape === 'hexagon') {
+        elem.style.clipPath = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
+        elem.style.backgroundColor = particleConfig.color;
+      } else if (particleConfig.shape === 'pentagon') {
+        elem.style.clipPath = 'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)';
+        elem.style.backgroundColor = particleConfig.color;
+      }
+      
+      // Completely empty inside - no text to strictly maintain particle vs substance level
+      elem.innerText = ''; 
+      elem.dataset.particleId = particleConfig.id;
+      elem.dataset.color = particleConfig.color;
+      elem.dataset.shape = particleConfig.shape;
+
+      if (isSpawner) {
+        elem.title = "Ziehen, um ein neues Teilchen zu erzeugen";
+        // Spawner Drag events
+        elem.addEventListener('mousedown', (e) => startSpawnDrag(e, particleConfig));
+        elem.addEventListener('touchstart', (e) => startSpawnDrag(e, particleConfig), { passive: false });
+      } else {
+        elem.title = "Doppelklick zum Löschen";
+        // Placed Particle Drag & Delete events
+        elem.addEventListener('mousedown', startParticleDrag);
+        elem.addEventListener('touchstart', startParticleDrag, { passive: false });
+        elem.addEventListener('dblclick', () => elem.remove());
+      }
+
+      return elem;
+    }
+
+    function startSpawnDrag(e, config) {
+      e.preventDefault();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      const newParticle = createParticleElement(config, false);
+      newParticle.style.position = 'absolute';
+      newParticle.style.zIndex = '100';
+
+      document.body.appendChild(newParticle);
+
+      const rect = newParticle.getBoundingClientRect();
+      newParticle.style.left = `${clientX - rect.width / 2}px`;
+      newParticle.style.top = `${clientY - rect.height / 2}px`;
+
+      draggedElement = newParticle;
+      dragOffset = { x: rect.width / 2, y: rect.height / 2 };
+
+      addDragListeners();
+    }
+
+    function startParticleDrag(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      draggedElement = e.currentTarget;
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      const rect = draggedElement.getBoundingClientRect();
+      dragOffset = {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+
+      // Move particle to body level for smooth dragging across zones
+      document.body.appendChild(draggedElement);
+      draggedElement.style.position = 'absolute';
+      draggedElement.style.zIndex = '100';
+      draggedElement.style.left = `${clientX - dragOffset.x}px`;
+      draggedElement.style.top = `${clientY - dragOffset.y}px`;
+
+      addDragListeners();
+    }
+
+    function onDragMove(e) {
+      if (!draggedElement) return;
+      e.preventDefault();
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      draggedElement.style.left = `${clientX - dragOffset.x}px`;
+      draggedElement.style.top = `${clientY - dragOffset.y}px`;
+    }
+
+    function onDragEnd(e) {
+      if (!draggedElement) return;
+
+      const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+      const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+
+      // Find drop target zone
+      draggedElement.style.display = 'none'; // Temp hide for elementFromPoint
+      const dropTarget = document.elementFromPoint(clientX, clientY);
+      draggedElement.style.display = 'flex';
+
+      const zone = dropTarget ? dropTarget.closest('.drop-zone') : null;
+
+      if (zone) {
+        const phase = zone.dataset.phase;
+        const container = document.getElementById(`particles-phase-${phase}`);
+        const zoneRect = container.getBoundingClientRect();
+
+        let posX = clientX - zoneRect.left - dragOffset.x;
+        let posY = clientY - zoneRect.top - dragOffset.y;
+
+        // Keep inside bounds (based on 28px size)
+        posX = Math.max(0, Math.min(posX, zoneRect.width - 28));
+        posY = Math.max(0, Math.min(posY, zoneRect.height - 28));
+
+        draggedElement.style.position = 'absolute';
+        draggedElement.style.left = `${posX}px`;
+        draggedElement.style.top = `${posY}px`;
+        draggedElement.style.zIndex = '10';
+
+        container.appendChild(draggedElement);
+      } else {
+        // Dropped outside any valid zone -> remove particle
+        draggedElement.remove();
+      }
+
+      draggedElement = null;
+      removeDragListeners();
+    }
+
+    function addDragListeners() {
+      window.addEventListener('mousemove', onDragMove);
+      window.addEventListener('mouseup', onDragEnd);
+      window.addEventListener('touchmove', onDragMove, { passive: false });
+      window.addEventListener('touchend', onDragEnd);
+    }
+
+    function removeDragListeners() {
+      window.removeEventListener('mousemove', onDragMove);
+      window.removeEventListener('mouseup', onDragEnd);
+      window.removeEventListener('touchmove', onDragMove);
+      window.removeEventListener('touchend', onDragEnd);
+    }
+
+    // Reset current diagram
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      renderActiveProcedure();
+    });
+
+    // Initial Start
+    window.onload = () => {
+      initUI();
+    };
+  </script>
+</body>
+</html>
