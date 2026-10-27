@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chemie 9: Stoffgemische ordnen</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #f0f4f8;
+        }
+        /* Custom Animations & Styles */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .touch-target {
+            touch-action: manipulation;
+        }
+        .shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .pop {
+            animation: pop 0.3s ease-out forwards;
+        }
+        @keyframes pop {
+            0% { transform: scale(0.9); opacity: 0; }
+            70% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        /* Canvas for confetti */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between text-slate-800">
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- Header / Navigation -->
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-indigo-500 rounded-lg shadow-inner">
+                    <svg class="w-7 h-7 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold leading-tight">Chemie 9: Stoffgemische ordnen</h1>
+                    <p class="text-xs text-indigo-200">Realschule | Homogen & Heterogen</p>
+                </div>
+            </div>
+
+            <!-- Level Selector & Info Button -->
+            <div class="flex items-center space-x-2">
+                <button id="btn-tab-1" onclick="switchLevel(1)" class="px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm bg-white text-indigo-700">
+                    Stufe 1: Homogen vs. Heterogen
+                </button>
+                <button id="btn-tab-2" onclick="switchLevel(2)" class="px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm bg-indigo-700 text-white hover:bg-indigo-800">
+                    Stufe 2: Fachbegriffe & Zustände
+                </button>
+                <button onclick="toggleHelpModal()" class="p-2 bg-indigo-500 hover:bg-indigo-400 rounded-xl transition text-white" title="Hilfe & Spickzettel">
+                    💡 Hilfe
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl mx-auto w-full p-4 flex-grow">
+
+        <!-- Progress Bar & Score -->
+        <div class="mb-6 bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <span class="text-sm font-semibold text-slate-500">Fortschritt:</span>
+                <div class="w-48 sm:w-64 bg-slate-200 h-3 rounded-full overflow-hidden">
+                    <div id="progress-bar" class="bg-emerald-500 h-full w-0 transition-all duration-300"></div>
+                </div>
+                <span id="progress-text" class="text-sm font-bold text-slate-700">0 / 8 gelöst</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="text-sm font-medium">
+                    <span class="text-slate-500">Fehler:</span>
+                    <span id="error-count" class="font-bold text-rose-500 ml-1">0</span>
+                </div>
+                <button onclick="resetCurrentLevel()" class="px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-medium transition">
+                    🔄 Neustart
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= STUFE 1: HOMOGEN VS HETEROGEN ================= -->
+        <div id="level-1" class="space-y-6">
+            <div class="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-xl shadow-sm">
+                <p class="text-sm text-indigo-900 font-medium">
+                    📌 <strong>Aufgabe 1:</strong> Tippe auf eine Karte im Vorrat und wähle dann die richtige Spalte, oder ziehe die Karte direkt in die passende Kategorie (Homogen oder Heterogen).
+                </p>
+            </div>
+
+            <!-- Card Bank -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Verfügbare Gemische</h3>
+                <div id="cards-container-l1" class="flex flex-wrap gap-3 min-h-[100px] p-2 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                    <!-- Cards will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Drop Zones -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Homogen Zone -->
+                <div id="zone-homogen" onclick="handleZoneClick('homogen')" 
+                     class="bg-emerald-50/60 border-2 border-emerald-200 rounded-2xl p-5 min-h-[300px] transition-all flex flex-col shadow-sm">
+                    <div class="flex items-center space-x-2 mb-3 pb-2 border-b border-emerald-200">
+                        <span class="text-2xl">🔍</span>
+                        <div>
+                            <h2 class="font-bold text-lg text-emerald-900">Homogene Gemische</h2>
+                            <p class="text-xs text-emerald-700">Bestandteile mit bloßem Auge / Mikroskop nicht erkennbar (einphasig)</p>
+                        </div>
+                    </div>
+                    <div id="drop-homogen" class="flex-grow flex flex-col gap-2 p-2 rounded-xl transition-all">
+                        <!-- Cards dropped here -->
+                    </div>
+                </div>
+
+                <!-- Heterogen Zone -->
+                <div id="zone-heterogen" onclick="handleZoneClick('heterogen')" 
+                     class="bg-amber-50/60 border-2 border-amber-200 rounded-2xl p-5 min-h-[300px] transition-all flex flex-col shadow-sm">
+                    <div class="flex items-center space-x-2 mb-3 pb-2 border-b border-amber-200">
+                        <span class="text-2xl">👀</span>
+                        <div>
+                            <h2 class="font-bold text-lg text-amber-900">Heterogene Gemische</h2>
+                            <p class="text-xs text-amber-700">Bestandteile sichtbar / voneinander unterscheidbar (mehrphasig)</p>
+                        </div>
+                    </div>
+                    <div id="drop-heterogen" class="flex-grow flex flex-col gap-2 p-2 rounded-xl transition-all">
+                        <!-- Cards dropped here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= STUFE 2: FACHBEGRIFFE & ZUSTÄNDE ================= -->
+        <div id="level-2" class="space-y-6 hidden">
+            <div class="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r-xl shadow-sm">
+                <p class="text-sm text-purple-900 font-medium">
+                    🧪 <strong>Aufgabe 2:</strong> Ordne jedem Alltagsbeispiel den richtigen <strong>Fachbegriff</strong> sowie die beteiligten <strong>Aggregatzustände</strong> zu!
+                </p>
+            </div>
+
+            <div id="matching-grid-l2" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Cards for level 2 rendered dynamically -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-8 py-4 text-center text-xs text-slate-500">
+        <p>Interaktives Chemielernspiel • Realschule Bayern (Zweig II / III) • Klasse 9</p>
+    </footer>
+
+    <!-- HELP MODAL -->
+    <div id="help-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-lg font-bold text-indigo-900 flex items-center gap-2">
+                    💡 Chemie-Spickzettel: Stoffgemische
+                </h3>
+                <button onclick="toggleHelpModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1">✕</button>
+            </div>
+            
+            <div class="space-y-3 text-sm text-slate-700">
+                <div class="p-3 bg-slate-50 rounded-xl">
+                    <h4 class="font-bold text-indigo-700 mb-1">Einteilung der Stoffgemische</h4>
+                    <p>• <strong>Homogen:</strong> Erscheinungsbild ist einheitlich (z.B. Salz in Wasser gelöst, Luft, Messing).</p>
+                    <p>• <strong>Heterogen:</strong> Man kann einzelne Bestandteile erkennen (z.B. Saft mit Fruchtfleisch, Milch, Nebel).</p>
+                </div>
+
+                <h4 class="font-bold text-slate-800">Die wichtigsten Fachbegriffe & Zustände:</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div class="p-2.5 border rounded-lg bg-emerald-50/50">
+                        <strong class="text-emerald-800 block">Lösung (homogen)</strong>
+                        fest, flüssig oder gasförmig in flüssig (z.B. Mineralwasser, Salzwasser)
+                    </div>
+                    <div class="p-2.5 border rounded-lg bg-emerald-50/50">
+                        <strong class="text-emerald-800 block">Legierung (homogen)</strong>
+                        fest in fest (z.B. Messing, Bronze, Stahl)
+                    </div>
+                    <div class="p-2.5 border rounded-lg bg-emerald-50/50">
+                        <strong class="text-emerald-800 block">Gasgemisch (homogen)</strong>
+                        gasförmig in gasförmig (z.B. Luft)
+                    </div>
+                    <div class="p-2.5 border rounded-lg bg-amber-50/50">
+                        <strong class="text-amber-800 block">Suspension (heterogen)</strong>
+                        fest in flüssig (z.B. Fruchtfleisch im Saft)
+                    </div>
+                    <div class="p-2.5 border rounded-lg bg-amber-50/50">
+                        <strong class="text-amber-800 block">Emulsion (heterogen)</strong>
+                        flüssig in flüssig (z.B. Fetttröpfchen in Wasser = Milch)
+                    </div>
+                    <div class="p-2.5 border rounded-lg bg-amber-50/50">
+                        <strong class="text-amber-800 block">Schaum (heterogen)</strong>
+                        gasförmig in flüssig (z.B. Seifenschaum)
+                    </div>
+                    <div class="p-2.5 border rounded-lg bg-amber-50/50">
+                        <strong class="text-amber-800 block">Nebel (heterogen)</strong>
+                        flüssig in gasförmig (z.B. Wassertröpfchen in Luft)
+                    </div>
+                    <div class="p-2.5 border rounded-lg bg-amber-50/50">
+                        <strong class="text-amber-800 block">Rauch (heterogen)</strong>
+                        fest in gasförmig (z.B. Rußtröpfchen/Partikel in Luft)
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-right pt-2 border-t">
+                <button onclick="toggleHelpModal()" class="px-5 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition">
+                    Verstanden!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WIN MODAL -->
+    <div id="win-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl text-center space-y-5 pop">
+            <div class="w-20 h-20 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto text-4xl shadow-inner">
+                🏆
+            </div>
+            <div>
+                <h3 class="text-2xl font-bold text-slate-800">Klasse gemacht!</h3>
+                <p id="win-message" class="text-sm text-slate-600 mt-2">Du hast alle Stoffgemische erfolgreich geordnet.</p>
+            </div>
+            <div class="p-4 bg-slate-50 rounded-2xl flex justify-around text-center">
+                <div>
+                    <span class="text-xs text-slate-400 font-semibold block uppercase">Fehler</span>
+                    <span id="final-errors" class="text-lg font-bold text-slate-700">0</span>
+                </div>
+                <div class="border-r border-slate-200"></div>
+                <div>
+                    <span class="text-xs text-slate-400 font-semibold block uppercase">Bewertung</span>
+                    <span id="final-rating" class="text-lg font-bold text-amber-500">⭐⭐⭐</span>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button id="btn-next-level" onclick="goToNextLevel()" class="flex-1 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition shadow-md">
+                    Nächste Stufe ➔
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Database of Mixture Examples
+        const mixturesData = [
+            {
+                id: 'milch',
+                name: 'Milch',
+                icon: '🥛',
+                category: 'heterogen',
+                term: 'Emulsion',
+                state: 'flüssig in flüssig',
+                hint: 'Fetttröpfchen sind fein in Wasser verteilt.'
+            },
+            {
+                id: 'orangensaft',
+                name: 'Orangensaft mit Fruchtfleisch',
+                icon: '🍊',
+                category: 'heterogen',
+                term: 'Suspension',
+                state: 'fest in flüssig',
+                hint: 'Feste Fruchtfleischteilchen schweben in der Flüssigkeit.'
+            },
+            {
+                id: 'seifenschaum',
+                name: 'Seifenschaum',
+                icon: '🧼',
+                category: 'heterogen',
+                term: 'Schaum',
+                state: 'gasförmig in flüssig',
+                hint: 'Luftbläschen sind in einer seifigen Flüssigkeit eingeschlossen.'
+            },
+            {
+                id: 'luft',
+                name: 'Luft (sauber)',
+                icon: '🌬️',
+                category: 'homogen',
+                term: 'Gasgemisch',
+                state: 'gasförmig in gasförmig',
+                hint: 'Stickstoff, Sauerstoff etc. sind vollständig vermischt.'
+            },
+            {
+                id: 'messing',
+                name: 'Messing (Kupfer + Zink)',
+                icon: '🪙',
+                category: 'homogen',
+                term: 'Legierung',
+                state: 'fest in fest',
+                hint: 'Ein fester Metall-Gemisch.'
+            },
+            {
+                id: 'mineralwasser',
+                name: 'Mineralwasser (still/gelöst)',
+                icon: '💧',
+                category: 'homogen',
+                term: 'Lösung',
+                state: 'fest/gasförmig in flüssig',
+                hint: 'Mineralstoffe sind vollständig unsichtbar gelöst.'
+            },
+            {
+                id: 'nebel',
+                name: 'Nebel',
+                icon: '🌫️',
+                category: 'heterogen',
+                term: 'Nebel',
+                state: 'flüssig in gasförmig',
+                hint: 'Feine Wassertröpfchen schweben in der Luft.'
+            },
+            {
+                id: 'russ',
+                name: 'Rauch / Ruß in Luft',
+                icon: '💨',
+                category: 'heterogen',
+                term: 'Rauch',
+                state: 'fest in gasförmig',
+                hint: 'Kleine feste Rußpartikel schweben in einem Gas.'
+            }
+        ];
+
+        // Options for Level 2 Dropdowns
+        const termsOptions = ['Lösung', 'Legierung', 'Gasgemisch', 'Suspension', 'Emulsion', 'Rauch', 'Nebel', 'Schaum'];
+        const statesOptions = [
+            'fest in flüssig',
+            'flüssig in flüssig',
+            'gasförmig in flüssig',
+            'fest in gasförmig',
+            'flüssig in gasförmig',
+            'gasförmig in gasförmig',
+            'fest in fest',
+            'fest/gasförmig in flüssig'
+        ];
+
+        // Game State
+        let currentLevel = 1;
+        let selectedCardId = null;
+        let errors = 0;
+        let level1Solved = new Set();
+        let level2Solved = new Set();
+
+        // Audio Context for sound effects
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSound(type) {
+            try {
+                if (!audioCtx) audioCtx = new AudioContext();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'correct') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                    osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.15); // E5
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.25);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(110, audioCtx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.25);
+                } else if (type === 'win') {
+                    const now = audioCtx.currentTime;
+                    [440, 554.37, 659.25, 880].forEach((freq, idx) => {
+                        const noteOsc = audioCtx.createOscillator();
+                        const noteGain = audioCtx.createGain();
+                        noteOsc.connect(noteGain);
+                        noteGain.connect(audioCtx.destination);
+                        noteOsc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                        noteGain.gain.setValueAtTime(0.15, now + idx * 0.1);
+                        noteGain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.3);
+                        noteOsc.start(now + idx * 0.1);
+                        noteOsc.stop(now + idx * 0.1 + 0.3);
+                    });
+                }
+            } catch (e) {
+                // Audio fallback if restricted
+            }
+        }
+
+        // Initialize App
+        window.onload = () => {
+            initLevel1();
+            initLevel2();
+            updateProgress();
+        };
+
+        // Switch between Stufe 1 & Stufe 2
+        function switchLevel(lvl) {
+            currentLevel = lvl;
+            const btn1 = document.getElementById('btn-tab-1');
+            const btn2 = document.getElementById('btn-tab-2');
+            const view1 = document.getElementById('level-1');
+            const view2 = document.getElementById('level-2');
+
+            if (lvl === 1) {
+                btn1.className = "px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm bg-white text-indigo-700";
+                btn2.className = "px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm bg-indigo-700 text-white hover:bg-indigo-800";
+                view1.classList.remove('hidden');
+                view2.classList.add('hidden');
+            } else {
+                btn2.className = "px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm bg-white text-indigo-700";
+                btn1.className = "px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm bg-indigo-700 text-white hover:bg-indigo-800";
+                view2.classList.remove('hidden');
+                view1.classList.add('hidden');
+            }
+            updateProgress();
+        }
+
+        // Initialize Level 1
+        function initLevel1() {
+            const container = document.getElementById('cards-container-l1');
+            container.innerHTML = '';
+            document.getElementById('drop-homogen').innerHTML = '';
+            document.getElementById('drop-heterogen').innerHTML = '';
+            level1Solved.clear();
+            selectedCardId = null;
+
+            // Shuffle cards
+            const shuffled = [...mixturesData].sort(() => Math.random() - 0.5);
+
+            shuffled.forEach(item => {
+                const card = document.createElement('div');
+                card.id = `card-l1-${item.id}`;
+                card.className = "touch-target flex items-center gap-2 p-3 bg-white rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all select-none pop";
+                card.draggable = true;
+                card.setAttribute('data-id', item.id);
+                
+                card.innerHTML = `
+                    <span class="text-2xl">${item.icon}</span>
+                    <span class="font-medium text-sm text-slate-800">${item.name}</span>
+                `;
+
+                // Touch/Click selection
+                card.onclick = (e) => {
+                    e.stopPropagation();
+                    selectCardL1(item.id);
+                };
+
+                // Drag & Drop
+                card.ondragstart = (e) => {
+                    e.dataTransfer.setData('text/plain', item.id);
+                    selectCardL1(item.id);
+                };
+
+                container.appendChild(card);
+            });
+
+            // Set up Drop Zones for HTML5 Drag
+            ['homogen', 'heterogen'].forEach(cat => {
+                const zone = document.getElementById(`zone-${cat}`);
+                zone.ondragover = (e) => e.preventDefault();
+                zone.ondrop = (e) => {
+                    e.preventDefault();
+                    const id = e.dataTransfer.getData('text/plain');
+                    if (id) evaluateL1(id, cat);
+                };
+            });
+        }
+
+        function selectCardL1(id) {
+            if (level1Solved.has(id)) return;
+            
+            // Remove previous selection highlight
+            mixturesData.forEach(item => {
+                const el = document.getElementById(`card-l1-${item.id}`);
+                if (el) el.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50');
+            });
+
+            selectedCardId = id;
+            const selectedCard = document.getElementById(`card-l1-${id}`);
+            if (selectedCard) {
+                selectedCard.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50');
+            }
+        }
+
+        function handleZoneClick(category) {
+            if (!selectedCardId) return;
+            evaluateL1(selectedCardId, category);
+        }
+
+        function evaluateL1(id, category) {
+            const item = mixturesData.find(m => m.id === id);
+            const cardEl = document.getElementById(`card-l1-${id}`);
+
+            if (!item || !cardEl || level1Solved.has(id)) return;
+
+            if (item.category === category) {
+                // Correct!
+                playSound('correct');
+                level1Solved.add(id);
+                selectedCardId = null;
+
+                cardEl.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'hover:border-indigo-400');
+                cardEl.classList.add('border-emerald-300', 'bg-emerald-50/70', 'cursor-default');
+                cardEl.draggable = false;
+                cardEl.onclick = null;
+
+                // Move to drop zone
+                const targetDrop = document.getElementById(`drop-${category}`);
+                targetDrop.appendChild(cardEl);
+
+                updateProgress();
+
+                if (level1Solved.size === mixturesData.length) {
+                    setTimeout(() => triggerWin(1), 300);
+                }
+            } else {
+                // Incorrect
+                playSound('wrong');
+                errors++;
+                document.getElementById('error-count').innerText = errors;
+                
+                cardEl.classList.add('shake', 'border-rose-400');
+                setTimeout(() => {
+                    cardEl.classList.remove('shake', 'border-rose-400');
+                }, 400);
+            }
+        }
+
+        // Initialize Level 2
+        function initLevel2() {
+            const grid = document.getElementById('matching-grid-l2');
+            grid.innerHTML = '';
+            level2Solved.clear();
+
+            mixturesData.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between space-y-3";
+                
+                // Randomize options for dropdowns
+                const shuffledTerms = [...termsOptions].sort(() => Math.random() - 0.5);
+                const shuffledStates = [...statesOptions].sort(() => Math.random() - 0.5);
+
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <span class="text-3xl p-2 bg-slate-100 rounded-xl">${item.icon}</span>
+                        <div>
+                            <h4 class="font-bold text-slate-800 text-sm">${item.name}</h4>
+                            <span class="text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full font-medium">
+                                ${item.category.toUpperCase()}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 pt-2 border-t border-slate-100">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Fachbegriff:</label>
+                            <select id="select-term-${item.id}" onchange="checkL2('${item.id}')" 
+                                    class="w-full text-xs p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                                <option value="">-- Fachbegriff wählen --</option>
+                                ${shuffledTerms.map(t => `<option value="${t}">${t}</option>`).join('')}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Aggregatzustände:</label>
+                            <select id="select-state-${item.id}" onchange="checkL2('${item.id}')" 
+                                    class="w-full text-xs p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                                <option value="">-- Zustände wählen --</option>
+                                ${shuffledStates.map(s => `<option value="${s}">${s}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="feedback-l2-${item.id}" class="text-xs font-medium min-h-[18px]"></div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        function checkL2(id) {
+            const item = mixturesData.find(m => m.id === id);
+            const termSelect = document.getElementById(`select-term-${id}`);
+            const stateSelect = document.getElementById(`select-state-${id}`);
+            const feedback = document.getElementById(`feedback-l2-${id}`);
+
+            const selectedTerm = termSelect.value;
+            const selectedState = stateSelect.value;
+
+            if (!selectedTerm || !selectedState) {
+                feedback.innerHTML = '';
+                return;
+            }
+
+            if (selectedTerm === item.term && selectedState === item.state) {
+                // Correct!
+                if (!level2Solved.has(id)) {
+                    playSound('correct');
+                    level2Solved.add(id);
+                }
+                feedback.className = "text-xs font-semibold text-emerald-600 flex items-center gap-1";
+                feedback.innerHTML = "✓ Richtig gelöst!";
+
+                termSelect.classList.add('border-emerald-400', 'bg-emerald-50');
+                stateSelect.classList.add('border-emerald-400', 'bg-emerald-50');
+                termSelect.disabled = true;
+                stateSelect.disabled = true;
+
+                updateProgress();
+
+                if (level2Solved.size === mixturesData.length) {
+                    setTimeout(() => triggerWin(2), 300);
+                }
+            } else {
+                // Check what's wrong for helpful feedback
+                playSound('wrong');
+                errors++;
+                document.getElementById('error-count').innerText = errors;
+
+                feedback.className = "text-xs font-medium text-rose-500";
+                feedback.innerHTML = `❌ Noch nicht ganz. Tipp: ${item.hint}`;
+            }
+        }
+
+        // Update Progress Bar
+        function updateProgress() {
+            const count = currentLevel === 1 ? level1Solved.size : level2Solved.size;
+            const total = mixturesData.length;
+            const percent = (count / total) * 100;
+
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+            document.getElementById('progress-text').innerText = `${count} / ${total} gelöst`;
+        }
+
+        // Reset current level
+        function resetCurrentLevel() {
+            errors = 0;
+            document.getElementById('error-count').innerText = errors;
+            if (currentLevel === 1) {
+                initLevel1();
+            } else {
+                initLevel2();
+            }
+            updateProgress();
+        }
+
+        // Modals & Win Handlers
+        function toggleHelpModal() {
+            const modal = document.getElementById('help-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function triggerWin(lvl) {
+            playSound('win');
+            launchConfetti();
+
+            const winModal = document.getElementById('win-modal');
+            const winMessage = document.getElementById('win-message');
+            const finalErrors = document.getElementById('final-errors');
+            const finalRating = document.getElementById('final-rating');
+            const btnNext = document.getElementById('btn-next-level');
+
+            finalErrors.innerText = errors;
+
+            if (errors === 0) finalRating.innerText = '⭐⭐⭐ (Perfekt!)';
+            else if (errors <= 3) finalRating.innerText = '⭐⭐ (Super!)';
+            else finalRating.innerText = '⭐ (Gut gemacht!)';
+
+            if (lvl === 1) {
+                winMessage.innerText = 'Du hast alle Stoffe perfekt in Homogen und Heterogen unterteilt!';
+                btnNext.innerText = 'Weiter zu Stufe 2 ➔';
+                btnNext.onclick = () => {
+                    winModal.classList.add('hidden');
+                    switchLevel(2);
+                };
+            } else {
+                winMessage.innerText = 'Klasse! Du beherrschst alle Fachbegriffe & Aggregatzustände der Stoffgemische!';
+                btnNext.innerText = 'Noch einmal spielen 🔄';
+                btnNext.onclick = () => {
+                    winModal.classList.add('hidden');
+                    resetCurrentLevel();
+                    switchLevel(1);
+                };
+            }
+
+            winModal.classList.remove('hidden');
+        }
+
+        function goToNextLevel() {
+            document.getElementById('win-modal').classList.add('hidden');
+            switchLevel(2);
+        }
+
+        // Simple Confetti Animation
+        function launchConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const colors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
+
+            for (let i = 0; i < 80; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    vy: Math.random() * 3 + 2,
+                    vx: Math.random() * 2 - 1,
+                    rot: Math.random() * 360
+                });
+            }
+
+            let frame = 0;
+            function render() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    p.y += p.vy;
+                    p.x += p.vx;
+                    p.rot += 2;
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.rot * Math.PI) / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                    ctx.restore();
+                });
+
+                frame++;
+                if (frame < 180) {
+                    requestAnimationFrame(render);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+            render();
+        }
+    </script>
+</body>
+</html>
