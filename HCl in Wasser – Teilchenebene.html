@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HCl in Wasser – Teilchenebene</title>
+<style>
+:root{--bg:#f4f6f8;--fg:#1b2430;--mut:#5a6673;--card:#fff;--gas:#eef2f6;--liq:#cde4f3;--bd:#d3dae2;--acc:#0e5fd8;--cl:#2f9d58;--o:#d8403a;--h:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12171d;--fg:#e8edf2;--mut:#9aa7b4;--card:#1a2129;--gas:#222a33;--liq:#1c3a52;--bd:#333d48;--acc:#5b9bff}}
+:root[data-theme="dark"]{--bg:#12171d;--fg:#e8edf2;--mut:#9aa7b4;--card:#1a2129;--gas:#222a33;--liq:#1c3a52;--bd:#333d48;--acc:#5b9bff}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif}
+.w{max-width:980px;margin:0 auto;padding:16px}
+h1{font:600 1.5rem/1.2 Georgia,"Times New Roman",serif;margin:4px 0 4px}
+.eq{font-size:1.1rem;margin:0 0 12px;color:var(--mut)}
+.g{display:grid;grid-template-columns:1fr 250px;gap:14px;align-items:start}
+@media(max-width:720px){.g{grid-template-columns:1fr}}
+canvas{width:100%;height:auto;display:block;border:1px solid var(--bd);border-radius:8px;background:var(--card)}
+#k{max-width:260px;margin:0 auto}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0}
+button{font:inherit;padding:7px 14px;border-radius:6px;border:1px solid var(--bd);background:var(--card);color:var(--fg);cursor:pointer}
+button.p{background:var(--acc);color:#fff;border-color:var(--acc)}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+ol{margin:8px 0;padding:0;list-style:none;display:grid;gap:6px}
+li{padding:8px 12px;border-left:4px solid var(--bd);color:var(--mut);border-radius:0 6px 6px 0}
+li.on{border-color:var(--acc);background:var(--card);color:var(--fg)}
+.leg{display:flex;flex-wrap:wrap;gap:14px;font-size:.9rem;color:var(--mut);margin:6px 0}
+.d{display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.35);vertical-align:-1px;margin-right:4px}
+.st{font-size:.95rem;margin:8px 0}
+.m{height:10px;border-radius:5px;background:var(--bd);overflow:hidden}.m i{display:block;height:100%;background:var(--acc);width:100%}
+</style></head><body><div class="w">
+<h1>Salzsäure-Springbrunnen: Was passiert mit den Teilchen?</h1>
+<div class="g"><div>
+<canvas id="m" width="1280" height="960" role="img" aria-label="Teilchenmodell: HCl-Moleküle lösen sich an der Wasseroberfläche und reagieren zu H₃O⁺ und Cl⁻"></canvas>
+<div class="leg"><span><i class="d" style="background:#2f9d58"></i>Cl</span><span><i class="d" style="background:#fff"></i>H</span><span><i class="d" style="background:#d8403a"></i>O</span><span>Ausschnitt: Grenzfläche Gas / Wasser</span></div>
+<div class="bar"><button class="p" id="go">Start</button><button id="pa">Pause</button><button id="re">Neu starten</button>
+<label>Tempo <input type="range" id="sp" min="0.4" max="3" step="0.1" value="1"></label>
+<label><input type="checkbox" id="in" checked> Universalindikator</label></div></div>
+<div><canvas id="k" width="480" height="660" role="img" aria-label="Schema des Versuchsaufbaus"></canvas>
+<p class="st">Druck im Kolben<div class="m"><i id="pr"></i></div></p>
+<p class="st" id="cnt"></p></div></div>
+</div>
+<script>
+const $=i=>document.getElementById(i),c=$('m'),X=c.getContext('2d'),k=$('k'),K=k.getContext('2d');
+const W=640,H=480,S=240,N=20,T=Math.PI*2,R=Math.random,wr=a=>((a%T)+T)%T;
+let gas,wat,cls,fx,go,pa=false,sp=1,dn=0,t=0,ind=true;
+function init(){go=false;dn=0;fx=[];cls=[];gas=[];wat=[];
+for(let i=0;i<N;i++){const a=R()*T,v=1.2+R()*1.1;gas.push({x:30+R()*580,y:30+R()*170,vx:Math.cos(a)*v,vy:Math.sin(a)*v,a:R()*T,va:(R()-.5)*.08,st:0,w:null})}
+for(let r=0;r<5;r++)for(let q=0;q<8;q++){const hx=45+q*77+(r%2)*35,hy=282+r*44;wat.push({hx,hy,x:hx,y:hy,vx:0,vy:0,a:R()*T,va:0,ion:false,tg:false})}
+$('go').disabled=false}
+function step(){
+for(const g of gas){if(g.st===2)continue;
+if(g.st===0){g.x+=g.vx*sp;g.y+=g.vy*sp;g.a+=g.va*sp;
+if(g.x<22){g.x=22;g.vx=Math.abs(g.vx)}if(g.x>618){g.x=618;g.vx=-Math.abs(g.vx)}if(g.y<20){g.y=20;g.vy=Math.abs(g.vy)}
+if(g.y>S-16){let b=null,bd=1e9;
+if(go)for(const w of wat){if(w.ion||w.tg)continue;const d=(w.x-g.x)**2+(w.y-S)**2;if(d<bd){bd=d;b=w}}
+if(b){b.tg=true;g.st=1;g.w=b}else{g.y=S-16;g.vy=-Math.abs(g.vy)}}}
+else{const w=g.w,tx=w.x,ty=w.y-30,dx=tx-g.x,dy=ty-g.y,d=Math.hypot(dx,dy);
+g.a+=(((Math.PI/2-g.a+3*T)%T)-Math.PI)*.12*sp;
+if(d<3){w.ion=true;w.tg=false;fx.push({x:w.x,y:w.y-14,t:0});const b=R()*T;cls.push({x:g.x,y:g.y,vx:Math.cos(b)*.5,vy:Math.sin(b)*.5});g.st=2;dn++}
+else{const s=Math.min(d,2.2*sp);g.x+=dx/d*s;g.y+=dy/d*s}}}
+for(const w of wat){w.vx+=(w.hx-w.x)*.012+(R()-.5)*.28;w.vy+=(w.hy-w.y)*.012+(R()-.5)*.28;w.vx*=.9;w.vy*=.9;w.x+=w.vx*sp;w.y+=w.vy*sp;
+w.va=(w.va+(R()-.5)*.02)*.96;w.a+=w.va*sp}
+for(const q of cls){q.vx+=(R()-.5)*.25;q.vy+=(R()-.5)*.25;const v=Math.hypot(q.vx,q.vy);if(v>1){q.vx/=v;q.vy/=v}
+q.x+=q.vx*sp;q.y+=q.vy*sp;if(q.x<20||q.x>620)q.vx*=-1;if(q.y<S+26||q.y>466)q.vy*=-1;q.x=Math.max(20,Math.min(620,q.x));q.y=Math.max(S+26,Math.min(466,q.y))}
+for(const f of fx)f.t+=sp;fx=fx.filter(f=>f.t<32)}
+function at(C,x,y,r,f){C.beginPath();C.arc(x,y,r,0,T);C.fillStyle=f;C.fill();C.lineWidth=1.2;C.strokeStyle='rgba(0,0,0,.4)';C.stroke()}
+function line(C,a,b,c2,d){C.beginPath();C.moveTo(a,b);C.lineTo(c2,d);C.lineWidth=3;C.strokeStyle='rgba(120,130,140,.9)';C.stroke()}
+function txt(C,s,x,y,col,sz){C.font='bold '+sz+'px sans-serif';C.fillStyle=col;C.textAlign='center';C.textBaseline='middle';C.fillText(s,x,y)}
+function draw(){
+const cs=getComputedStyle(document.documentElement),v=n=>cs.getPropertyValue(n).trim(),f=dn/N;
+X.setTransform(2,0,0,2,0,0);X.clearRect(0,0,W,H);
+X.fillStyle=v('--gas');X.fillRect(0,0,W,S);X.fillStyle=v('--liq');X.fillRect(0,S,W,H-S);
+if(ind){const r=Math.round(110+120*f),g=Math.round(200-130*f),b=Math.round(130-70*f);X.fillStyle='rgba('+r+','+g+','+b+',.4)';X.fillRect(0,S,W,H-S)}
+X.beginPath();X.moveTo(0,S);for(let i=0;i<=W;i+=8)X.lineTo(i,S+Math.sin(i/30+t/25)*1.5);X.lineWidth=2;X.strokeStyle=v('--acc');X.stroke();
+X.textAlign='left';X.font='13px sans-serif';X.fillStyle=v('--mut');X.fillText('Gasraum (HCl)',10,14);X.fillText('Wasser'+(ind?' mit Universalindikator':''),10,S+16);
+for(const w of wat){if(w.ion){X.beginPath();X.arc(w.x,w.y,27,0,T);X.fillStyle='rgba(214,40,40,.2)';X.fill()}const hs=w.ion?[0,2.09,4.19].map(d=>w.a+d):[w.a-.91,w.a+.91],p=hs.map(a=>[w.x+Math.cos(a)*14,w.y+Math.sin(a)*14]);
+p.forEach(q=>line(X,w.x,w.y,q[0],q[1]));at(X,w.x,w.y,9,v('--o'));p.forEach(q=>at(X,q[0],q[1],5.5,'#fff'));
+if(w.ion)txt(X,'+',w.x+17,w.y-16,'#d62828',18)}
+for(const q of cls){at(X,q.x,q.y,12,v('--cl'));txt(X,'−',q.x+14,q.y-13,'#1c6b3a',18)}
+for(const g of gas){if(g.st===2)continue;const hx=g.x+Math.cos(g.a)*15,hy=g.y+Math.sin(g.a)*15;line(X,g.x,g.y,hx,hy);at(X,g.x,g.y,11,v('--cl'));at(X,hx,hy,5.5,'#fff')}
+for(const e of fx){X.beginPath();X.arc(e.x,e.y,6+e.t,0,T);X.strokeStyle='rgba(255,190,0,'+(1-e.t/32)+')';X.lineWidth=2.5;X.stroke()}
+macro(f)}
+function macro(f){const C=K;C.setTransform(2,0,0,2,0,0);C.clearRect(0,0,240,330);
+const cs=getComputedStyle(document.documentElement),mu=cs.getPropertyValue('--mut').trim(),cl=cs.getPropertyValue('--cl').trim(),cx=120,cy=95,r=65;
+C.save();C.beginPath();C.arc(cx,cy,r,0,T);C.rect(108,150,24,52);C.clip();
+C.globalAlpha=.45*(1-f)+.03;C.fillStyle=cl;C.fillRect(0,0,240,210);C.globalAlpha=1;
+if(f>.5){const h=Math.min(1,(f-.5)*2)*r*1.7;C.fillStyle='#3f9fe0';C.fillRect(0,cy+r-h,240,h+60)}C.restore();
+C.beginPath();C.arc(cx,cy,r,0,T);C.rect(108,150,24,52);C.lineWidth=2;C.strokeStyle=mu;C.stroke();
+C.fillStyle='#3f9fe0';C.fillRect(40,262,160,48);C.strokeStyle=mu;C.strokeRect(40,240,160,70);
+const lv=300-222*Math.min(1,f*2);C.lineCap='round';C.beginPath();C.moveTo(cx,300);C.lineTo(cx,78);C.lineWidth=6;C.strokeStyle=mu;C.stroke();
+C.beginPath();C.moveTo(cx,300);C.lineTo(cx,lv);C.lineWidth=3;C.strokeStyle='#3f9fe0';C.stroke();
+if(go&&f>.5&&f<.97){C.setLineDash([5,5]);C.lineDashOffset=-t*1.5;C.lineWidth=2.5;C.strokeStyle='#3f9fe0';
+C.beginPath();C.moveTo(cx,78);C.quadraticCurveTo(cx-6,34,cx-34,96);C.moveTo(cx,78);C.quadraticCurveTo(cx+6,34,cx+34,96);C.moveTo(cx,78);C.lineTo(cx,48);C.stroke();C.setLineDash([])}
+C.font='12px sans-serif';C.fillStyle=mu;C.textAlign='center';C.fillText('HCl-Gas',cx,cy+(f>.5?-20:6));C.fillText('Wasser',cx,326);
+$('pr').style.width=((1-f)*100)+'%';
+$('cnt').innerHTML='HCl im Gas: '+(N-dn)+'<br>H₃O⁺ / Cl⁻: '+dn+' / '+dn;
+}
+function loop(){if(!pa){step();t+=sp}draw();requestAnimationFrame(loop)}
+$('go').onclick=()=>{go=true;$('go').disabled=true};
+$('pa').onclick=e=>{pa=!pa;e.target.textContent=pa?'Weiter':'Pause'};
+$('re').onclick=init;$('sp').oninput=e=>sp=+e.target.value;$('in').onchange=e=>ind=e.target.checked;
+init();loop();
+</script></body></html>
