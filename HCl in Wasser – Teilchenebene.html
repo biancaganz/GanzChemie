@@ -59,9 +59,9 @@ else{const w=g.w,tx=w.x,ty=w.y-30,dx=tx-g.x,dy=ty-g.y,d=Math.hypot(dx,dy);
 g.a+=(((Math.PI/2-g.a+3*T)%T)-Math.PI)*.12*sp;
 if(d<3){w.ion=true;w.tg=false;fx.push({x:w.x,y:w.y-14,t:0});const b=R()*T;cls.push({x:g.x,y:g.y,vx:Math.cos(b)*.5,vy:Math.sin(b)*.5});g.st=2;dn++}
 else{const s=Math.min(d,2.2*sp);g.x+=dx/d*s;g.y+=dy/d*s}}}
-for(const w of wat){w.vx+=(w.hx-w.x)*.012+(R()-.5)*.28;w.vy+=(w.hy-w.y)*.012+(R()-.5)*.28;w.vx*=.9;w.vy*=.9;w.x+=w.vx*sp;w.y+=w.vy*sp;
-w.va=(w.va+(R()-.5)*.02)*.96;w.a+=w.va*sp}
-for(const q of cls){q.vx+=(R()-.5)*.25;q.vy+=(R()-.5)*.25;const v=Math.hypot(q.vx,q.vy);if(v>1){q.vx/=v;q.vy/=v}
+for(const w of wat){for(const o of wat){if(o===w)continue;const dx=w.x-o.x,dy=w.y-o.y,d=Math.hypot(dx,dy);if(d<34&&d>.1){w.vx+=dx/d*.12;w.vy+=dy/d*.12}}w.vx+=(R()-.5)*.5;w.vy+=(R()-.5)*.5;const sv=Math.hypot(w.vx,w.vy);if(sv>1.2){w.vx*=1.2/sv;w.vy*=1.2/sv}w.x+=w.vx*sp;w.y+=w.vy*sp;if(w.x<22||w.x>618){w.vx*=-1;w.x=Math.max(22,Math.min(618,w.x))}if(w.y<S+20||w.y>462){w.vy*=-1;w.y=Math.max(S+20,Math.min(462,w.y))}
+w.va=(w.va+(R()-.5)*.06)*.95;w.a+=w.va*sp}
+for(const q of cls){q.vx+=(R()-.5)*.5;q.vy+=(R()-.5)*.5;const v=Math.hypot(q.vx,q.vy);if(v>1.5){q.vx=q.vx/v*1.5;q.vy=q.vy/v*1.5}
 q.x+=q.vx*sp;q.y+=q.vy*sp;if(q.x<20||q.x>620)q.vx*=-1;if(q.y<S+26||q.y>466)q.vy*=-1;q.x=Math.max(20,Math.min(620,q.x));q.y=Math.max(S+26,Math.min(466,q.y))}
 for(const f of fx)f.t+=sp;fx=fx.filter(f=>f.t<32)}
 function at(C,x,y,r,f){C.beginPath();C.arc(x,y,r,0,T);C.fillStyle=f;C.fill();C.lineWidth=1.2;C.strokeStyle='rgba(0,0,0,.4)';C.stroke()}
